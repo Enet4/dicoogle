@@ -82,6 +82,19 @@ public interface PluginSet extends Plugin {
      * This collection must be immutable.
      * @return a collection of Restlet-based server resources, implementing {@code toString()}
      * to provide the resource name
+     * Access to Restlets
+     * @return a collection containing all active restlets
+     */
+    public default Collection<? extends RestletInterface> getRestletPlugins() {
+        return Collections.EMPTY_LIST;
+    } 
+    
+    /**
+     * 
+     * Returns Jetty plugins
+     * This is still experimental...
+     * @return Returns a list of JettyPluginInterface to the core application
+     * 
      */
     public default Collection<? extends ServerResource> getRestPlugins() {
         return Collections.EMPTY_LIST;

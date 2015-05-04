@@ -41,6 +41,7 @@ public abstract class PluginBase implements PluginSet, PlatformCommunicatorInter
     protected List<JettyPluginInterface> jettyPlugins = new ArrayList<>();
     protected List<StorageInterface> storagePlugins = new ArrayList<>();
     protected List<ServerResource> services = new ArrayList<>();
+    protected List<RestletInterface> restlets = new ArrayList<>();
     protected ConfigurationHolder settings = null;
     
     protected DicooglePlatformInterface platform;
