@@ -13,7 +13,8 @@
     "process": false
   },
   "plugins": [
-    "react"
+    "react",
+    "import"
   ],
   "rules": {
     "no-console": 0,
@@ -37,6 +38,11 @@
     "consistent-this": [2, "self"],
     "no-dupe-args": 2,
     "no-dupe-keys": 2,
-    "no-undef": 2
+    "no-undef": 2,
+    "import/no-unresolved": [2, {"commonjs": true}],
+    "import/named": 2,
+    "import/namespace": 2,
+    "import/default": 2,
+    "import/export": 2
   }
 }
