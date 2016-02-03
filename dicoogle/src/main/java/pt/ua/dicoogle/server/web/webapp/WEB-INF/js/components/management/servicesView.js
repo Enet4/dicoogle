@@ -209,26 +209,27 @@ var ServicesView = React.createClass({
     stopQuery () {
       ServiceAction.setQuery(false);
     },
-
     drawCanvas () {
-      var canvas1 = document.getElementById("myCanvas");
-      var canvas2 = document.getElementById("myCanvas2");
+      let canvas1 = document.getElementById("myCanvas");
+      let canvas2 = document.getElementById("myCanvas2");
       draw(canvas1, this.state.storageRunning);
       draw(canvas2, this.state.queryRunning);
       function draw(e, status){
-        var canvas = e;
-        var context = canvas.getContext('2d');
-        var centerX = canvas.width / 2;
-        var centerY = canvas.height / 2;
-        var radius = 13;
+        let canvas = e;
+        if (canvas) {
+          let context = canvas.getContext('2d');
+          const centerX = canvas.width / 2;
+          const centerY = canvas.height / 2;
+          const radius = 13;
 
-        context.beginPath();
-        context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
-        context.fillStyle = status ? 'green' : 'red';
-        context.fill();
-        context.lineWidth = 1;
-        context.strokeStyle = '#003300';
-        context.stroke();
+          context.beginPath();
+          context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
+          context.fillStyle = status ? 'green' : 'red';
+          context.fill();
+          context.lineWidth = 1;
+          context.strokeStyle = '#003300';
+          context.stroke();
+        }
       }
     }
 });
