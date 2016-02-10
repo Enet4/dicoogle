@@ -30,21 +30,18 @@ var ResultsSelected = Reflux.createStore({
 
       this._contents.push(data);
     },
-    onUnSelect:function(data) {
-
-
+    onUnSelect: function(data) {
 
         let i = 0;
         for (var c of this._contents)
         {
             if (JSON.stringify(c) === JSON.stringify(data))
             {
-                this._contents.splice(i,1);
+                this._contents.splice(i, 1);
                 break;
 
             }
-            i = i+1;
-
+            i += 1;
         }
 
     },

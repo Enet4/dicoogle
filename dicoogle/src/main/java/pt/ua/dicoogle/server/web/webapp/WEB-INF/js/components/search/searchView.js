@@ -1,4 +1,3 @@
-/*jshint esnext: true*/
 
 import React from 'react';
 import $ from 'jquery';
@@ -35,7 +34,7 @@ var Search = React.createClass({
     },
     componentWillUpdate: function() {
 
-        if (getUrlVars()['_k']!=this.keyHash)
+        if (getUrlVars()['_k'] !== this.keyHash)
         {
             this.keyHash = getUrlVars()['_k'];
             this.setState({
@@ -43,7 +42,7 @@ var Search = React.createClass({
             });
         }
         this.keyHash = getUrlVars()['_k'];
-        
+
 
     },
     componentDidUpdate: function(){
@@ -125,7 +124,7 @@ var Search = React.createClass({
         let selectedId = providerEl.selectedIndex;
         let provider = "";
         if(selectedId === 0){
-          provider = "all"
+          provider = "all";
         } else {
           provider = providerEl.options[selectedId].text;
         }
