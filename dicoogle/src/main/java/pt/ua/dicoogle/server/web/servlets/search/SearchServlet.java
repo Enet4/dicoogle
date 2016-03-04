@@ -76,7 +76,7 @@ public class SearchServlet extends HttpServlet {
   		else
   		searchType = stype;
   	}
-    //TODO: QIDO;
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         /*

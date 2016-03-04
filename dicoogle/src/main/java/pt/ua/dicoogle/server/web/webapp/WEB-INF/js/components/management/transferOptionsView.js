@@ -109,6 +109,7 @@ const TransferOptionsView = React.createClass({
       request(id, value) {
         var uid = this.state.data.data[document.getElementById("sop_select").selectedIndex].uid;
         console.log("Selected uid:", uid);
+        // TODO use Dicoogle Client in the future
         $.post(Endpoints.base + "/management/settings/transfer", {
           uid: uid,
           option: id,

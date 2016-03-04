@@ -2,3 +2,6 @@
 /css/dicoogle.css
 /css/dicoogle.css.map
 /js/bundle.*
+/lib/
+/.sass-change/
+/.vscode/

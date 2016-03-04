@@ -2,8 +2,7 @@
 
 import Reflux from 'reflux';
 import {TransferActions} from '../actions/transferActions';
-import {Endpoints} from '../constants/endpoints';
-import {request} from '../handlers/requestHandler';
+import {getTransferSettings} from '../handlers/requestHandler';
 
 const TransferStore = Reflux.createStore({
     listenables: TransferActions,
@@ -21,8 +20,15 @@ const TransferStore = Reflux.createStore({
         });
         return;
       }
-      let url = Endpoints.base + "/management/settings/transfer";
-      request(url, (data) => {
+      getTransferSettings((error, data) => {
+          if (error) {
+            //FAILURE
+            this.trigger({
+                success: false,
+                status: error.status
+              });
+            return;
+          }
           //SUCCESS
           console.log("success", data);
           this._contents = data;
@@ -31,13 +37,7 @@ const TransferStore = Reflux.createStore({
             data: this._contents,
             success: true
           });
-        }, (xhr) => {
-          //FAILURE
-          this.trigger({
-              success: false,
-              status: xhr.status
-            });
-        });
+      });
     },
 
     onSet: function(index, indexOption, value){

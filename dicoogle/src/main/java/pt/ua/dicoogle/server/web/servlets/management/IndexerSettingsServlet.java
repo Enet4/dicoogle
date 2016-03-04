@@ -41,14 +41,19 @@ public class IndexerSettingsServlet extends HttpServlet {
 
     public enum SettingsType {
 
-        all,path, zip, effort, thumbnail,thumbnailSize, watcher;
+        all, path, zip, effort, thumbnail, thumbnailSize, watcher;
     }
-    private SettingsType type;
+    private final SettingsType type;
 
     public IndexerSettingsServlet(SettingsType type) {
         this.type = type;
     }
-
+    
+    @Override
+    protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        this.doPost(req, resp);
+    }
+    
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
     	
@@ -73,8 +78,6 @@ public class IndexerSettingsServlet extends HttpServlet {
     		ieffort = Integer.parseInt(req.getParameter("effort"));
     		tumbnailSize = req.getParameter("thumbnailSize");
     	}
-    	
-    	
 
         switch (type) {
             case path:
@@ -114,7 +117,6 @@ public class IndexerSettingsServlet extends HttpServlet {
             	 
             	break;
             	
-            	
         }
         new XMLSupport().printXML();
     }
@@ -153,7 +155,8 @@ public class IndexerSettingsServlet extends HttpServlet {
             	resp.getWriter().write(allresponse.toString());
             	break;
         }
-
+        
+        resp.setContentType("application/json");
         resp.getWriter().append(result);
     }
 

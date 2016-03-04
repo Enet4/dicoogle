@@ -13,8 +13,6 @@ import {Input} from 'react-bootstrap';
 import ResultSelectActions from '../../../actions/resultSelectAction';
 import {UserStore} from '../../../stores/userStore';
 
-
-
 var ImageView = React.createClass({
     getInitialState: function() {
       // We need this because refs are not updated in BootstrapTable.
