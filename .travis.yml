@@ -1,0 +1,11 @@
+language: java
+java:
+  - oraclejdk8
+before_install:
+  - nvm install $NODE_VERSION
+install: true
+script:
+  - cd dicoogle/src/main/resources/webapp && npm install && cd ../../../../.. && mvn install -Dmaven.javadoc.skip=true -B -V
+env:
+  - NODE_VERSION=4
+  - NODE_VERSION=stable
