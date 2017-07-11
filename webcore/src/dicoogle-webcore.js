@@ -368,7 +368,7 @@ const DicoogleWebcore = (function () {
       let pluginDOM = document.createElement('div');
       pluginDOM.className = this.dom.className + '-instance';
       this.dom.appendChild(pluginDOM);
-      const e = plugin.render(pluginDOM, this.dom);
+      const e = plugin.render.call(plugin, pluginDOM, this.dom);
       
       emitSlotSignal(dom, 'plugin-load', e);
       
@@ -385,7 +385,7 @@ const DicoogleWebcore = (function () {
         let pluginDOM = document.createElement('div');
         pluginDOM.className = slotDOM.className + '-instance';
         slotDOM.appendChild(pluginDOM);
-        this.attachments[i].render(pluginDOM);
+        this.attachments[i].render.call(this.attachments[i], pluginDOM);
       }
     };
   };
@@ -457,8 +457,8 @@ const DicoogleWebcore = (function () {
       return;
     }
     for (const resultSlot of resultSlotArray) {
-      for (let i = 0; i < resultSlot.attachments.length; i++) {
-        resultSlot.attachments[i].onResult(result, requestTime, options);
+      for (const attachment  of resultSlot.attachments) {
+        attachment.onResult.call(attachment, result, requestTime, options);
       }
     }
     event_hub.emit('result', result, requestTime, options);
@@ -474,8 +474,6 @@ const DicoogleWebcore = (function () {
    */
   function service_get(uri, qs, callback) {
     // issue request
-    //const full_uri = [base_url].concat(uri);
-    //request('GET', full_uri, qs, callback);
     Dicoogle.request('GET', uri, qs, callback);
   }
   
