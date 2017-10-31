@@ -20,6 +20,7 @@ package pt.ua.dicoogle.sdk.core;
 
 import java.net.URI;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import pt.ua.dicoogle.sdk.IndexerInterface;
@@ -28,6 +29,7 @@ import pt.ua.dicoogle.sdk.StorageInputStream;
 import pt.ua.dicoogle.sdk.StorageInterface;
 import pt.ua.dicoogle.sdk.datastructs.Report;
 import pt.ua.dicoogle.sdk.datastructs.SearchResult;
+import pt.ua.dicoogle.sdk.settings.server.ServerSettingsReader;
 import pt.ua.dicoogle.sdk.task.JointQueryTask;
 import pt.ua.dicoogle.sdk.task.Task;
 
@@ -78,7 +80,10 @@ public interface DicooglePlatformInterface {
      * @return the storage interface capable of handling that content, or {@code null} if no storage plugin
      * installed can.
      */
-    public StorageInterface getStoragePluginForSchema(String scheme);
+    @Deprecated
+    public default StorageInterface getStoragePluginForSchema(String scheme) {
+        return this.getStoragePluginByScheme(scheme);
+    }
     
     /** Obtains the storage interface for handling content in the given location.
      * 
@@ -86,15 +91,26 @@ public interface DicooglePlatformInterface {
      * @return the storage interface capable of handling that content, or {@code null} if no storage plugin
      * installed can
      */
-    public StorageInterface getStorageForSchema(URI location);
-    
+    @Deprecated
+    public default StorageInterface getStorageForSchema(URI location) {
+        return this.getStoragePluginFor(location);
+    }
+
+    public StorageInterface getStoragePluginByScheme(String scheme);
+
+    public StorageInterface getStoragePluginFor(URI location);
+
     /** Quickly obtains all storage elements at the given location.
      * 
      * @param location the location to retrieve
      * @param args a variable list of extra parameters for the retrieve
      * @return an iterable of storage input streams
      */
-    public Iterable<StorageInputStream> resolveURI(URI location, Object ...args);
+    public default Iterable<StorageInputStream> resolveURI(URI location, Object ...args) {
+        StorageInterface i = this.getStoragePluginFor(location);
+        if (i == null) return Collections.emptyList();
+        return i.at(location, args);
+    }
     
     /** Obtains all installed storage plugins.
      * 
@@ -110,7 +126,10 @@ public interface DicooglePlatformInterface {
      * @return the storage interface capable of handling that content, or {@code null} if no storage plugin
      * installed can
      */
-	public StorageInterface getStorageForSchema(String scheme);
+    @Deprecated
+	public default StorageInterface getStorageForSchema(String scheme) {
+        return this.getStoragePluginByScheme(scheme);
+    }
 
     /** Obtains all installed query plugins.
      * 
@@ -142,6 +161,7 @@ public interface DicooglePlatformInterface {
      * @param parameters a variable list of extra parameters for the query
      * @return a join query task
      */
+    @Deprecated
 	public JointQueryTask queryAll(JointQueryTask holder, String query,
 			Object... parameters) ;
 
@@ -163,6 +183,7 @@ public interface DicooglePlatformInterface {
      * @param parameters a variable list of extra parameters for the query
      * @return an asynchronous task containing the results
      */
+    @Deprecated
 	public JointQueryTask query(JointQueryTask holder,
 			List<String> querySources, String query, Object... parameters);
 
@@ -180,6 +201,7 @@ public interface DicooglePlatformInterface {
      * @param path the path to index
      * @return a list of reports, one for each provider
      */
+    @Deprecated
 	public List<Report> indexBlocking(URI path);
     
     /** Obtain access to the server's settings.

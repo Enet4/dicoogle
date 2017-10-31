@@ -38,7 +38,6 @@ public class PluginFactory {
     
     public static Collection<PluginSet> getPlugins(File pluginDirectory){
         PluginManager pm = PluginManagerFactory.createPluginManager();
-        //System.err.println(pluginDirectory.getAbsolutePath());
         pm.addPluginsFrom(pluginDirectory.toURI());
         PluginManagerUtil pmu = new PluginManagerUtil(pm);
         return pmu.getPlugins(PluginSet.class);

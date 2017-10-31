@@ -28,6 +28,7 @@ import java.util.concurrent.Executor;
 
 import org.dcm4che2.data.Tag;
 import org.slf4j.LoggerFactory;
+
 import javax.xml.transform.TransformerConfigurationException;
 import org.dcm4che2.data.DicomElement;
 import org.dcm4che2.data.DicomObject;
@@ -40,10 +41,11 @@ import pt.ua.dicoogle.core.exceptions.CFindNotSupportedException;
 import pt.ua.dicoogle.DicomLog.LogDICOM;
 import pt.ua.dicoogle.DicomLog.LogLine;
 import pt.ua.dicoogle.DicomLog.LogXML;
+import pt.ua.dicoogle.core.settings.ServerSettingsManager;
 import pt.ua.dicoogle.sdk.datastructs.MoveDestination;
+import pt.ua.dicoogle.sdk.settings.server.ServerSettings;
 import pt.ua.dicoogle.server.DicomNetwork;
 import pt.ua.dicoogle.server.SearchDicomResult;
-import pt.ua.dicoogle.core.ServerSettings;
 
 /**
  *
@@ -68,44 +70,38 @@ public class CMoveServiceSCP extends CMoveService {
     @Override
     protected DimseRSP doCMove(Association as, int pcid, DicomObject cmd,
             DicomObject data, DicomObject rsp) throws DicomServiceException {
-        //DebugManager.getInstance().debug("doCMove");
-        //DebugManager.getInstance().debug("DoCmove");
+        //DebugManager.getSettings().debug("doCMove");
+        //DebugManager.getSettings().debug("DoCmove");
 
         DimseRSP replay = null;
 
         /**
          * Verify Permited AETs
          */
-        //DebugManager.getInstance().debug(":: Verify Permited AETs @??C-MOVE Action ");
+        //DebugManager.getSettings().debug(":: Verify Permited AETs @??C-MOVE Action ");
 
         boolean permited = false;
 
-        if (ServerSettings.getInstance().getPermitAllAETitles()) {
+        if (ServerSettingsManager.getSettings().getDicomServicesSettings().getAllowedAETitles().isEmpty()) {
             permited = true;
         } else 
         {
-            String permitedAETs[] = ServerSettings.getInstance().getCAET();
-
-            for (int i = 0; i < permitedAETs.length; i++) {
-                if (permitedAETs[i].equals(as.getCallingAET())) {
-                    permited = true;
-                    break;
-                }
-            }
+            permited = ServerSettingsManager.getSettings().getDicomServicesSettings().getAllowedAETitles()
+                    .contains(as.getCallingAET());
         }
 
         if (!permited) {
-            //DebugManager.getInstance().debug("Client association NOT permited: " + as.getCallingAET() + "!");
+            //DebugManager.getSettings().debug("Client association NOT permited: " + as.getCallingAET() + "!");
             as.abort();
 
             return new MoveRSP(data, rsp);
         } else {
-            //DebugManager.getInstance().debug("Client association permited: " + as.getCallingAET() + "!");
+            //DebugManager.getSettings().debug("Client association permited: " + as.getCallingAET() + "!");
         }
 
         /** FIXME: Write wait by rspreplay */
         try {
-            Thread.sleep(ServerSettings.getInstance().getRspDelay());
+            Thread.sleep(ServerSettingsManager.getSettings().getDicomServicesSettings().getQueryRetrieveSettings().getRspDelay());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -125,7 +121,7 @@ public class CMoveServiceSCP extends CMoveService {
         int portAddr = as.getSocket().getPort();
 
         String destination = cmd.getString(org.dcm4che2.data.Tag.MoveDestination);
-        //DebugManager.getInstance().debug("A Move was required to <ip:port> : <"
+        //DebugManager.getSettings().debug("A Move was required to <ip:port> : <"
         //        + ip.getHostAddress() + ":" + portAddr + ">" + " to --> " + destination);
 
 
@@ -136,10 +132,10 @@ public class CMoveServiceSCP extends CMoveService {
                     "Missing Move Destination");
         }
 
-        /*DebugManager.getInstance().debug("-- Objects containing the data requested by C-MOVE");
-        DebugManager.getInstance().debug(data.toString());
-        DebugManager.getInstance().debug(cmd.toString());
-        DebugManager.getInstance().debug(rsp.toString());*/
+        /*DebugManager.getSettings().debug("-- Objects containing the data requested by C-MOVE");
+        DebugManager.getSettings().debug(data.toString());
+        DebugManager.getSettings().debug(cmd.toString());
+        DebugManager.getSettings().debug(rsp.toString());*/
         String SOPUID = new String(data.get(Integer.parseInt("0020000D", 16)).getBytes());
         String CMoveID = cmd.getString(org.dcm4che2.data.Tag.MessageID);
         System.out.println("C-MOVE ID REQUEST: " + CMoveID);
@@ -186,7 +182,7 @@ public class CMoveServiceSCP extends CMoveService {
 
 
         if (search == null) {
-            //DebugManager.getInstance().debug(">> Search is null, so"
+            //DebugManager.getSettings().debug(">> Search is null, so"
             //        + " somethig is wrong ");
         } else {
 
@@ -224,8 +220,8 @@ public class CMoveServiceSCP extends CMoveService {
              *
              */
             String hostDest = ip.getHostAddress();
-            ServerSettings ob = ServerSettings.getInstance();
-            for (MoveDestination m : ob.getMoves()) {
+            ServerSettings.DicomServices ob = ServerSettingsManager.getSettings().getDicomServicesSettings();
+            for (MoveDestination m : ob.getMoveDestinations()) {
                 if (m.getAETitle().equals(destination)) {
                     hostDest = m.getIpAddrs();
                     portAddr = m.getPort();

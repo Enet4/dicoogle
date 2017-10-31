@@ -24,9 +24,12 @@ import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 import pt.ua.dicoogle.DicomLog.LogDICOM;
 import pt.ua.dicoogle.DicomLog.LogXML;
-import pt.ua.dicoogle.core.*;
+import pt.ua.dicoogle.core.AsyncIndex;
+import pt.ua.dicoogle.core.TagsXML;
+import pt.ua.dicoogle.core.settings.ServerSettingsManager;
 import pt.ua.dicoogle.plugins.PluginController;
 import pt.ua.dicoogle.sdk.Utils.Platform;
+import pt.ua.dicoogle.sdk.settings.server.ServerSettings;
 import pt.ua.dicoogle.sdk.utils.TagsStruct;
 
 import javax.swing.*;
@@ -79,9 +82,6 @@ public class Main
             if (args[0].equals("-s"))
             {
                 LaunchDicoogle();
-            } else if (args[0].equals("-c") || args[0].equals("-g") || args[0].equals("--gui")) {
-                LaunchDicoogle();
-                LaunchGUIClient();
             }
             else if (args[0].equals("-w") || args[0].equals("--web") || args[0].equals("--webapp")) {
                 // open browser
@@ -98,6 +98,10 @@ public class Main
             else
             {
                 System.out.println("Wrong arguments!");
+                System.out.println();
+                System.out.println("Dicoogle PACS");
+                System.out.println("-s : Start the server");
+                System.out.println("-w : Start the server and load web application in default browser (default)");
             }
         }
         /** Register System Exceptions Hook */
@@ -111,8 +115,8 @@ public class Main
             return false;
         } else {
             try {
-                ServerSettings settings = ServerSettings.getInstance();
-                URI uri = URI.create("http://localhost:" + settings.getWeb().getServerPort());
+                ServerSettings settings = ServerSettingsManager.getSettings();
+                URI uri = URI.create("http://localhost:" + settings.getWebServerSettings().getPort());
                 Desktop.getDesktop().browse(uri);
                 return true;
             } catch (IOException ex) {
@@ -126,12 +130,18 @@ public class Main
     {
         logger.debug("Starting Dicoogle");
         logger.debug("Loading configuration file: {}", Platform.homePath());
-        
-        /* Load all Server Settings from XML */
-        ServerSettings settings = new XMLSupport().getXML();
 
-        try
-        {
+        /* Load all Server Settings */
+        try {
+            ServerSettingsManager.init();
+        } catch (IOException e) {
+            logger.error("A critical error occurred: cannot initialize server settings.", e);
+            System.exit(-1);
+        }
+        ServerSettings settings = ServerSettingsManager.getSettings();
+
+
+        try {
             TagsStruct _tags = new TagsXML().getXML();
 
             //load DICOM Services Log
@@ -141,11 +151,8 @@ public class Main
             logger.error(ex.getMessage(), ex);
         }
 
-        /***
-         * Connect to P2P
-         */
         /** Verify if it have a defined node */
-        if (!settings.isNodeNameDefined())
+        if (settings.getArchiveSettings().getNodeName() == null)
         {
             String hostname = "Dicoogle";
 
@@ -155,8 +162,7 @@ public class Main
 
                 // Get hostname
                 hostname = addr.getHostName();
-            } catch (UnknownHostException e)
-            {
+            } catch (UnknownHostException e) {
             }
 
             if (Desktop.isDesktopSupported()) {
@@ -165,23 +171,17 @@ public class Main
                         "Enter Node name",
                         JOptionPane.QUESTION_MESSAGE, null, null,
                         hostname);
-
-                settings.setNodeName(response);
-                settings.setNodeNameDefined(true);
+                settings.getArchiveSettings().setNodeName(response);
+                // Save settings
+                ServerSettingsManager.saveSettings();
             }
-
-            // Save Settings in XML
-            XMLSupport _xml = new XMLSupport();
-            _xml.printXML();
         }
 
-        logger.debug("Name: {}", ServerSettings.getInstance().getNodeName());
-        
         TransferSyntax.add(new TransferSyntax("1.2.826.0.1.3680043.2.682.1.40", false,false, false, true));
         TransferSyntax.add(new TransferSyntax("1.2.840.10008.1.2.4.70", true,false, false, true));
-        TransferSyntax.add(new TransferSyntax("1.2.840.10008.1.2.5.50", false,false, false, true));    
+        TransferSyntax.add(new TransferSyntax("1.2.840.10008.1.2.5.50", false,false, false, true));
 
-        PluginController PController = PluginController.getInstance();
+        PluginController.getInstance();
 
         // Start the initial Services of Dicoogle
         pt.ua.dicoogle.server.ControlServices.getInstance();
@@ -189,15 +189,8 @@ public class Main
         // Launch Async Index
         // It monitors a folder, and when a file is touched an event
         // triggers and index is updated.
-        if (ServerSettings.getInstance().isMonitorWatcher()) {
+        if (settings.getArchiveSettings().isDirectoryWatcherEnabled()) {
             AsyncIndex asyncIndex = new AsyncIndex();
         }
-    }
-
-    @Deprecated
-    private static void LaunchGUIClient()
-    {
-        logger.error("Remote GUI is no longer supported: please enter the Dicoogle web application");
-        System.exit(-1);
     }
 }

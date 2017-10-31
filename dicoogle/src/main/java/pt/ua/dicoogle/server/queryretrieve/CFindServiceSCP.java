@@ -33,7 +33,8 @@ import org.dcm4che2.net.service.CFindService;
 import pt.ua.dicoogle.DicomLog.LogDICOM;
 import pt.ua.dicoogle.DicomLog.LogLine;
 import pt.ua.dicoogle.DicomLog.LogXML;
-import pt.ua.dicoogle.core.ServerSettings;
+import pt.ua.dicoogle.core.settings.ServerSettingsManager;
+import pt.ua.dicoogle.sdk.settings.server.ServerSettings;
 import pt.ua.dicoogle.server.DicomNetwork;
 
 /**
@@ -42,8 +43,8 @@ import pt.ua.dicoogle.server.DicomNetwork;
  */
 public class CFindServiceSCP extends CFindService {
 
-    private ServerSettings s = ServerSettings.getInstance();
-    private int rspdelay = ServerSettings.getInstance().getRspDelay();
+    private ServerSettings s = ServerSettingsManager.getSettings();
+    private int rspdelay = ServerSettingsManager.getSettings().getDicomServicesSettings().getQueryRetrieveSettings().getRspDelay();
     
     private DicomNetwork service = null;
     private LuceneQueryACLManager luke = null;
@@ -67,7 +68,7 @@ public class CFindServiceSCP extends CFindService {
             DicomObject cmd, DicomObject keys, DicomObject rsp)
             throws DicomServiceException {
 
-        //DebugManager.getInstance().debug("doCFind? -- > working on it");
+        //DebugManager.getSettings().debug("doCFind? -- > working on it");
 
 
         DimseRSP replay = null;
@@ -75,30 +76,23 @@ public class CFindServiceSCP extends CFindService {
         /**
          * Verify Permited AETs
          */
-        //DebugManager.getInstance().debug(":: Verify Permited AETs @??C-FIND Action ");
+        //DebugManager.getSettings().debug(":: Verify Permited AETs @??C-FIND Action ");
         boolean permited = false;
 
-        if (s.getPermitAllAETitles()) {
+        if (s.getDicomServicesSettings().getAllowedAETitles().isEmpty()) {
             permited = true;
         } else {
-            String permitedAETs[] = s.getCAET();
-
-            for (int i = 0; i < permitedAETs.length; i++) {
-                if (permitedAETs[i].equals(as.getCallingAET())) {
-                    permited = true;
-                    break;
-                }
-            }
+            permited = s.getDicomServicesSettings().getAllowedAETitles().contains(as.getCallingAET());
         }
 
 
         if (!permited) {
-            //DebugManager.getInstance().debug("Client association NOT permited: " + as.getCallingAET() + "!");
+            //DebugManager.getSettings().debug("Client association NOT permited: " + as.getCallingAET() + "!");
             //as.abort();
 
             //return new FindRSP(keys, rsp, null);
         } else {
-            //DebugManager.getInstance().debug("Client association permited: " + as.getCallingAET() + "!");
+            //DebugManager.getSettings().debug("Client association permited: " + as.getCallingAET() + "!");
         }
 
 

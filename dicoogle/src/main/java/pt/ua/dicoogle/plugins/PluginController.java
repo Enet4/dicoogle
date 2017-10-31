@@ -23,7 +23,7 @@ import org.apache.commons.io.FileUtils;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import pt.ua.dicoogle.core.ServerSettings;
+import pt.ua.dicoogle.core.settings.ServerSettingsManager;
 import pt.ua.dicoogle.plugins.webui.WebUIPlugin;
 import pt.ua.dicoogle.plugins.webui.WebUIPluginManager;
 import pt.ua.dicoogle.sdk.*;
@@ -77,8 +77,10 @@ public class PluginController{
     }
     private final Collection<PluginSet> pluginSets;
     private final Collection<DeadPlugin> deadPluginSets;
+    private final Map<String, StorageInterface> storesByScheme;
     private File pluginFolder;
     private TaskQueue tasks = null;
+    private final PluginPreparer preparer;
 
 	private PluginSet remoteQueryPlugins = null;
     private final WebUIPluginManager webUI;
@@ -98,6 +100,7 @@ public class PluginController{
         }
 
         this.deadPluginSets = new ArrayList<>(4);
+        this.storesByScheme = new HashMap<>();
 
         //loads the plugins
         pluginSets = PluginFactory.getPlugins(pathToPluginDirectory);
@@ -113,6 +116,7 @@ public class PluginController{
         logger.info("Added default storage plugin");
         
         this.proxy = new DicooglePlatformProxy(this);
+        this.preparer = new PluginPreparer(this.proxy);
         
         initializePlugins(pluginSets);
         initRestInterface(pluginSets);
@@ -151,11 +155,8 @@ public class PluginController{
                 File pluginSettingsFile = new File(settingsFolder + "/" + name.replace('/', '-') + ".xml");
                 ConfigurationHolder holder = new ConfigurationHolder(pluginSettingsFile);
                 if(plugin.getName().equals("RemotePluginSet")) {
-                    this.remoteQueryPlugins = plugin;
-                    holder.getConfiguration().setProperty("NodeName", ServerSettings.getInstance().getNodeName());
-                    holder.getConfiguration().setProperty("TemporaryPath", ServerSettings.getInstance().getPath());
-
-                    logger.info("Started Remote Communications Manager");
+                	this.remoteQueryPlugins = plugin;
+                	logger.info("Started Remote Communications Manager");
                 }
                 applySettings(plugin, holder);
             }
@@ -192,6 +193,7 @@ public class PluginController{
                     set.getJettyPlugins(),
                     set.getRestPlugins()
             );
+
             for (Collection interfaces : all) {
                 if (interfaces == null) {
                     logger.debug("Plugin set {} provided a null collection!");
@@ -207,6 +209,11 @@ public class PluginController{
             // and to the set itself
             if (set instanceof PlatformCommunicatorInterface) {
                 ((PlatformCommunicatorInterface) set).setPlatformProxy(proxy);
+            }
+
+            // register storage plugins in dictionary
+            for (StorageInterface store: set.getStoragePlugins()) {
+                this.storesByScheme.put(store.getScheme(), store);
             }
         }
     }
@@ -391,32 +398,11 @@ public class PluginController{
      * TODO: this can be heavily improved if we keep a map of scheme->indexer
      * However we are not supposed to call this every other cycle.
      *
-     * TODO: we should return a proxy storage that always returns error
-     * 
-     * @todo "schema" is a typo, should read "scheme"
-     * 
      * @param location a URI of the location, only the scheme matters
      * @return a storage interface capable of handling the location, null if no suitable plugin is found
      */
-    public StorageInterface getStorageForSchema(URI location) {
-    	if(location == null){
-            logger.warn("URI for retrieving storage interface is null, ignoring");
-            return null;
-    	}
-        Collection<StorageInterface> storages = getStoragePlugins(false);
-        
-        for (StorageInterface store : storages) {
-            try {
-                if (store.handles(location)) {
-                    logger.debug("Retrieved storage for scheme: {}", location);
-                    return store;
-                }
-            } catch (RuntimeException ex) {
-                logger.warn("Storage plugin {} failed unexpectedly", store.getName(), ex);
-            }
-        }
-        logger.warn("Could not get storage for scheme: {}", location);
-        return null;
+    public StorageInterface getStoragePluginFor(URI location) {
+        return this.getStoragePluginByScheme(location.getScheme());
     }
     
     /** Retrieve a storage interface capable of handling files with the given scheme.
@@ -424,14 +410,18 @@ public class PluginController{
      * TODO: this can be heavily improved if we keep a map of scheme->indexer
      * However we are not supposed to call this every other cycle.
      *
-     * TODO: we should return a proxy storage that always returns error
-     * 
      * @param scheme a URI of the location, only the scheme matters
      * @return a storage interface capable of handling the location, null if no suitable plugin is found
      */
-    public StorageInterface getStorageForSchema(String scheme) {
-        URI uri = URI.create(scheme + ":/");
-        return getStorageForSchema(uri);
+    public StorageInterface getStoragePluginByScheme(String scheme) {
+        for (StorageInterface store: this.getStoragePlugins(true)) {
+            if (Objects.equals(store.getScheme(), scheme)) {
+                logger.debug("Retrieved storage for scheme {}", scheme);
+                return store;
+            }
+        }
+        logger.warn("Could not get storage for scheme {}", scheme);
+        return null;
     }
 
     public Collection<QueryInterface> getQueryPlugins(boolean onlyEnabled) {
@@ -450,9 +440,7 @@ public class PluginController{
     public void addTask(TaskRequest task) {
         this.tasks.addTask(task);
     }
-   
 
-    
     public List<String> getQueryProvidersName(boolean enabled){
     	Collection<QueryInterface> plugins = getQueryPlugins(enabled);
     	List<String> names = new ArrayList<>(plugins.size());
@@ -471,7 +459,7 @@ public class PluginController{
     			return p;
     		}
     	}
-    	logger.error("Could not retrieve query provider {} for onlyEnabled = {}", name, onlyEnabled);
+    	logger.error("Could not retrive query provider {} for onlyEnabled = {}", name, onlyEnabled);
     	return null;
     }
     
@@ -523,7 +511,7 @@ public class PluginController{
         return holder;//returns the handler to obtain the computation results
     }
     
-    private Task<Iterable<SearchResult>> getTaskForQuery(final String querySource, final String query, final Object ... parameters){
+    private Task<Iterable<SearchResult>> getTaskForQuery(String querySource, final String query, final Object ... parameters){
     	final QueryInterface queryEngine = getQueryProviderByName(querySource, true);
     	//returns a tasks that runs the query from the selected query engine
         String uid = UUID.randomUUID().toString();
@@ -531,12 +519,7 @@ public class PluginController{
             new Callable<Iterable<SearchResult>>(){
             @Override public Iterable<SearchResult> call() throws Exception {
                 if(queryEngine == null) return Collections.emptyList();
-                try {
-                    return queryEngine.query(query, parameters);
-                } catch (RuntimeException ex) {
-                    logger.warn("Query plugin {} failed unexpectedly", querySource, ex);
-                    return Collections.EMPTY_LIST;
-                }
+                return queryEngine.query(query, parameters);
             }
         });
         //logger.info("Prepared Query Task: QueryString");
@@ -552,10 +535,10 @@ public class PluginController{
      */
     public List<Task<Report>> index(URI path) {
     	logger.info("Starting Indexing procedure for {}", path.toString());
-        StorageInterface store = getStorageForSchema(path);
+        StorageInterface store = getStoragePluginFor(path);
 
         if(store==null){ 
-            logger.error("No storage plugin detected, ignoring index request");
+            logger.error("No storage plugin detected");
             return Collections.emptyList(); 
         }
         
@@ -586,14 +569,14 @@ public class PluginController{
         logger.info("Finished firing all indexing plugins for {}", path);
         
         return rettasks;    	
-    }
+    }     
     
     public List<Task<Report>> index(String pluginName, URI path) {
     	logger.info("Starting Indexing procedure for {}", path);
-        StorageInterface store = getStorageForSchema(path);
+        StorageInterface store = getStoragePluginFor(path);
 
         if(store==null){ 
-        	logger.error("No storage plugin detected, ignoring index request");
+        	logger.error("No storage plugin detected");
             return Collections.emptyList(); 
         }
         
@@ -623,7 +606,7 @@ public class PluginController{
         } catch (RuntimeException ex) {
             logger.warn("Indexer {} failed unexpectedly", indexer.getName(), ex);
         }
-
+        
         return rettasks;    	
     }
 
@@ -658,17 +641,13 @@ public class PluginController{
      */
     private void doUnindex(URI path, Collection<IndexerInterface> indexers) {
         for (IndexerInterface indexer : indexers) {
-            try {
-                indexer.unindex(path);
-            } catch (RuntimeException ex) {
-                logger.warn("Indexer {} failed unexpectedly", indexer.getName(), ex);
-            }
+        	indexer.unindex(path);
         }
         logger.info("Finished unindexing {}", path);
     }
     
     public void remove(URI uri){
-      StorageInterface si = getStorageForSchema(uri);
+      StorageInterface si = getStoragePluginFor(uri);
       if(si != null)
         doRemove(uri, si);
       else
@@ -676,18 +655,13 @@ public class PluginController{
     }
     
     public void doRemove(URI uri, StorageInterface si) {
-        try {
-            if (si.handles(uri)) {
-                si.remove(uri);
-            } else {
-                logger.warn("Storage Plugin does not handle URI: {},{}", uri, si);
-            }
-            logger.info("Finished removing {}", uri);
-        } catch (RuntimeException ex) {
-            logger.warn("Storage {} failed unexpectedly", si.getName(), ex);
+        if(si.handles(uri)){
+            si.remove(uri); 
+        } else {
+            logger.warn("Storage Plugin does not handle URI: {},{}", uri, si);
         }
+        logger.info("Finished removing {}", uri);
     }
-
     /*
      * Convenience method that calls index(URI) and runs the returned
      * tasks on the executing thread 
@@ -703,88 +677,14 @@ public class PluginController{
 			}
             catch (InterruptedException | ExecutionException e) {
                 logger.error(e.getMessage(), e);
-			} catch (RuntimeException e) {
-                logger.warn("Indexer task failed unexpectedly", e);
-            }
+			}
         }
         logger.info("Finished indexing {}", path);
         
         return reports;
     }
 
-    //METHODs FOR PluginController4Users
-    //TODO:this method is a workaround! we do get rightmenu items, but only for the search window
-    //which should be moved to plugins and hence we are assuming too much in here!
- 
-    @Deprecated
-	public List<JMenuItem> getRightButtonItems() {
-        logger.info("getRightButtonItems()");
-        ArrayList<JMenuItem> rightMenuItems = new ArrayList<>();
-        
-        for (PluginSet set : pluginSets) {
-            logger.info("Set plugins: {}", set.getGraphicalPlugins());
-            Collection<GraphicalInterface> graphicalPlugins = set.getGraphicalPlugins();
-            if (graphicalPlugins == null) {
-                continue;
-            }
-            logger.info("Looking for plugin");
-            for (GraphicalInterface gpi : graphicalPlugins) {
-                logger.info("GPI: {}", gpi);
-                ArrayList<JMenuItem> rbPanels = gpi.getRightButtonItems();
-                if (rbPanels == null) {
-                    continue;
-                }
-                rightMenuItems.addAll(rbPanels);
-            }
-        }
-        return rightMenuItems;
-    }
-
-    //returns a list of tabs from all plugins
-    @Deprecated
-    public List<JPanel> getTabItems() {
-        logger.info("getTabItems");
-        ArrayList<JPanel> panels = new ArrayList<>();
-
-        for (PluginSet set : pluginSets) {
-            Collection<GraphicalInterface> graphicalPlugins = set.getGraphicalPlugins();
-            if (graphicalPlugins == null) {
-                continue;
-            }
-            for (GraphicalInterface gpi : graphicalPlugins) {
-                ArrayList<JPanel> tPanels = gpi.getTabPanels();
-                if (tPanels == null) {
-                    continue;
-                }
-                panels.addAll(tPanels);
-            }
-        }
-        return panels;
-    }
-
-    @Deprecated
-    public List<JMenuItem> getMenuItems() {
-        logger.info("getMenuItems");
-        ArrayList<JMenuItem> items = new ArrayList<>();
-
-        for (PluginSet set : pluginSets) {
-            Collection<GraphicalInterface> graphicalPlugins = set.getGraphicalPlugins();
-            if (graphicalPlugins == null) {
-                continue;
-            }
-
-            for (GraphicalInterface gpi : graphicalPlugins) {
-                Collection<JMenuItem> setItems = gpi.getMenuItems();
-                if (setItems == null) {
-                    continue;
-                }
-                items.addAll(setItems);
-            }
-        }
-        return items;
-    }
-    
-    // Methods for Web UI 
+    // Methods for Web UI
 
     /** Retrieve all web UI plugin descriptors for the given slot id.
      * 
@@ -854,22 +754,4 @@ public class PluginController{
         }
     }
 
-    //METHODS FOR SERVICE:JAVA
-    /**
-     *
-     * TODO: REVIEW! BELOW
-     *
-     * Checks if the plugin exists and has advanced/internal settings.
-     *
-     * @param pluginName the name of the plugin.
-     * @return true if the plugin exists and has at least one advance/internal
-     * settings, false otherwise.
-     */
-    public boolean hasAdvancedSettings(String pluginName) {
-        return false;
-    }
-
-    public HashMap<String, String> getAdvancedSettingsHelp(String pluginName) {
-        return null;
-    }
 }

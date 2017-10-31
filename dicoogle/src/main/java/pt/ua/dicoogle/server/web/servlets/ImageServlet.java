@@ -30,9 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 import javax.servlet.ServletOutputStream;
@@ -41,7 +39,7 @@ import net.sf.json.JSONObject;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import pt.ua.dicoogle.core.ServerSettings;
+import pt.ua.dicoogle.core.settings.ServerSettingsManager;
 import pt.ua.dicoogle.plugins.PluginController;
 import pt.ua.dicoogle.sdk.StorageInputStream;
 import pt.ua.dicoogle.sdk.StorageInterface;
@@ -76,26 +74,22 @@ public class ImageServlet extends HttpServlet
     public ImageServlet(LocalImageCache cache) {
         this.cache = cache;
     }
-    
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
         String sopInstanceUID = request.getParameter("SOPInstanceUID");
         String uri = request.getParameter("uri");
-        String qsThumbnail = request.getParameter("thumbnail");
-        boolean thumbnail = qsThumbnail != null && (qsThumbnail.isEmpty() || Boolean.valueOf(qsThumbnail));
+        boolean thumbnail = Boolean.valueOf(request.getParameter("thumbnail"));
 
         if (sopInstanceUID == null) {
             if (uri == null) {
                 response.sendError(400, "URI or SOP Instance UID not provided");
                 return;
             }
-        } else {
-            sopInstanceUID = sopInstanceUID.trim();
-            if (sopInstanceUID.isEmpty()) {
-                response.sendError(400, "Invalid SOP Instance UID!");
-                return;
-            }
+        } else if (sopInstanceUID.trim().isEmpty()) {
+            response.sendError(400, "Invalid SOP Instance UID!");
+            return;
         }
         String[] providerArray = request.getParameterValues("provider");
         List<String> providers = providerArray == null ? null : Arrays.asList(providerArray);
@@ -106,7 +100,7 @@ public class ImageServlet extends HttpServlet
         } else {
             frame = Integer.parseInt(sFrame);
         }
-        
+
         StorageInputStream imgFile;
         if (sopInstanceUID != null) {
             // get the image file for that SOP Instance UID
@@ -120,7 +114,7 @@ public class ImageServlet extends HttpServlet
             try {
                 // get the image file by the URI
                 URI imgUri = new URI(uri);
-                StorageInterface storageInt = PluginController.getInstance().getStorageForSchema(imgUri);
+                StorageInterface storageInt = PluginController.getInstance().getStoragePluginFor(imgUri);
                 Iterator<StorageInputStream> storages = storageInt.at(imgUri).iterator();
                 // take the first valid storage
                 if (!storages.hasNext()) {
@@ -128,7 +122,7 @@ public class ImageServlet extends HttpServlet
                     return;
                 }
                 imgFile = storages.next();
-                 
+
             } catch (URISyntaxException ex) {
                 response.sendError(400, "Bad URI syntax");
                 return;
@@ -151,7 +145,7 @@ public class ImageServlet extends HttpServlet
                 logger.error("Unexpected exception", ex);
                 response.sendError(500);
             }
-            
+
         } else {
             // if the cache is invalid or not running convert the image and return it "on-the-fly"
             try {
@@ -168,23 +162,64 @@ public class ImageServlet extends HttpServlet
             }
         }
     }
-    
+
     private ByteArrayOutputStream getPNGStream(StorageInputStream imgFile, int frame, boolean thumbnail) throws IOException {
         ByteArrayOutputStream pngStream;
         if (thumbnail) {
-            int thumbSize;
-            try {
-                // retrieve thumbnail dimension settings
-                thumbSize = Integer.parseInt(ServerSettings.getInstance().getThumbnailsMatrix());
-            } catch (NumberFormatException ex) {
-                logger.warn("Failed to parse ThumbnailMatrix, using default thumbnail size");
-                thumbSize = 64;
-            }
+            int thumbSize = ServerSettingsManager.getSettings().getArchiveSettings().getThumbnailSize();
             pngStream = Convert2PNG.DICOM2ScaledPNGStream(imgFile, frame, thumbSize, thumbSize);
         } else {
             pngStream = Convert2PNG.DICOM2PNGStream(imgFile, frame);
         }
         return pngStream;
+    }
+
+    private static StorageInputStream getFileFromSOPInstanceUID(String sopInstanceUID, List<String> providers) throws IOException {
+
+        JointQueryTask qt = new JointQueryTask() {
+            @Override
+            public void onCompletion() {
+            }
+            @Override
+            public void onReceive(Task<Iterable<SearchResult>> e) {
+            }
+        };
+        try {
+            if (providers == null) {
+                providers = PluginController.getInstance().getQueryProvidersName(true);
+            }
+            Collection<String> dimProviders = ServerSettingsManager.getSettings().getArchiveSettings().getDIMProviders();
+            if (!dimProviders.isEmpty()) {
+                // DIM providers known, filtering
+                providers = new ArrayList<>(providers);
+                Iterator<String> it = providers.iterator();
+                while (it.hasNext()) {
+                    if (!dimProviders.contains(it.next())) {
+                        // not a DIM source
+                        it.remove();
+                    }
+                }
+            }
+
+            Iterator<SearchResult> it = PluginController.getInstance()
+                    .query(qt, providers, "SOPInstanceUID:" + sopInstanceUID).get().iterator();
+            if (!it.hasNext()) {
+                throw new IOException("No such image of SOPInstanceUID " + sopInstanceUID);
+            }
+            SearchResult res = it.next();
+            StorageInterface storage = PluginController.getInstance().getStoragePluginFor(res.getURI());
+            if (storage == null) {
+                throw new IOException("Unsupported file scheme");
+            }
+            Iterator<StorageInputStream> store = storage.at(res.getURI()).iterator();
+            if (!store.hasNext()) {
+                throw new IOException("No storage item found");
+            }
+            return store.next();
+        } catch (InterruptedException | ExecutionException ex) {
+            throw new IOException(ex);
+        }
+
     }
 
 	@Override
@@ -217,39 +252,6 @@ public class ImageServlet extends HttpServlet
 		PrintWriter wr = resp.getWriter();
 		wr.print(r.toString());	
 	}
+	
 
-    private static StorageInputStream getFileFromSOPInstanceUID(String sopInstanceUID, List<String> providers) throws IOException {
-        // TODO use only DIM sources?
-        JointQueryTask qt = new JointQueryTask() {
-            @Override
-            public void onCompletion() {
-            }
-            @Override
-            public void onReceive(Task<Iterable<SearchResult>> e) {
-            }
-        };
-        try {
-            if (providers == null) {
-                providers = PluginController.getInstance().getQueryProvidersName(true);
-            }
-            Iterator<SearchResult> it = PluginController.getInstance()
-                    .query(qt, providers, "SOPInstanceUID:" + sopInstanceUID).get().iterator();
-            if (!it.hasNext()) {
-                throw new IOException("No such image of SOPInstanceUID " + sopInstanceUID);
-            }
-            SearchResult res = it.next();
-            StorageInterface storage = PluginController.getInstance().getStorageForSchema(res.getURI());
-            if (storage == null) {
-                throw new IOException("Unsupported file scheme");
-            }
-            Iterator<StorageInputStream> store = storage.at(res.getURI()).iterator();
-            if (!store.hasNext()) {
-                throw new IOException("No storage item found");
-            }
-            return store.next();
-        } catch (InterruptedException | ExecutionException ex) {
-            throw new IOException(ex);
-        }
-        
-    }
 }

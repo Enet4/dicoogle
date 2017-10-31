@@ -21,10 +21,11 @@ package pt.ua.dicoogle.server;
 import java.io.IOException;
 import java.util.List;
 import org.slf4j.Logger;
+import pt.ua.dicoogle.core.settings.ServerSettingsManager;
+import pt.ua.dicoogle.sdk.settings.server.ServerSettings;
 import pt.ua.dicoogle.server.queryretrieve.QueryRetrieve;
 
 import org.slf4j.LoggerFactory;
-import pt.ua.dicoogle.core.ServerSettings;
 import pt.ua.dicoogle.server.web.DicoogleWeb;
 
 /**
@@ -61,10 +62,10 @@ public class ControlServices
     }
 
 
-    /* Strats the inicial services based on ServerSettings */
+    /* Strats the inicial services based on ServerSettingsManager */
     private void startInicialServices()
     {
-        ServerSettings settings = ServerSettings.getInstance();
+        ServerSettings settings = ServerSettingsManager.getSettings();
 
         try
         {
@@ -73,23 +74,18 @@ public class ControlServices
                 startP2P();
             }*/
 
-            if (settings.isStorage())
+            if (!this.storageIsRunning())
             {
                 startStorage();
             }
 
-            if (settings.isQueryRetrive())
+            if (!this.queryRetrieveIsRunning())
             {
                 startQueryRetrieve();
             }
 
-            if(settings.getWeb().isWebServer()){
+            if(!this.webServerIsRunning()){
             	startWebServer();
-            }
-
-            if (settings.getWeb().isWebServices())
-            {
-                startWebServices();
             }
 
         } catch (Exception ex)
@@ -104,11 +100,10 @@ public class ControlServices
         try
         {
         	//TODO: DELETED
-            //PluginController.getInstance().stopAll();
+            //PluginController.getSettings().stopAll();
            // stopP2P();
             stopStorage();
             stopQueryRetrieve();
-            stopWebServices();
         } catch (Exception ex)
         {
             logger.error(ex.getMessage(), ex);
@@ -130,7 +125,7 @@ public class ControlServices
     {
         if (storage == null)
         {
-            ServerSettings settings = ServerSettings.getInstance();
+            ServerSettings settings = ServerSettingsManager.getSettings();
 
             SOPList list = SOPList.getInstance();
             //list.setDefaultSettings();
@@ -176,7 +171,6 @@ public class ControlServices
         {
             retrieve = new QueryRetrieve();
             retrieve.startListening();
-            //DebugManager.getInstance().debug("Starting DICOM QueryRetrive");
             logger.info("Starting DICOM QueryRetrieve");
         }
     }
@@ -201,28 +195,13 @@ public class ControlServices
         return webServerRunning;
     }
 
-    @Deprecated
-    public void startWebServices()
-    {
-    }
-
-    @Deprecated
-    public void stopWebServices()
-    {
-    }
-
-    public boolean webServicesIsRunning()
-    {
-        return webServicesRunning;
-    }
-    
     //TODO: Review those below!
     public void startWebServer(){
         logger.info("Starting WebServer");
 
         try {
             if (webServices == null) {
-                webServices = new DicoogleWeb(ServerSettings.getInstance().getWeb().getServerPort());
+                webServices = new DicoogleWeb(ServerSettingsManager.getSettings().getWebServerSettings().getPort());
                 webServerRunning = true;
                 webServicesRunning = true;
                 logger.info("Starting Dicoogle Web");

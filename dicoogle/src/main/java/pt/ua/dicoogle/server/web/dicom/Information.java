@@ -120,7 +120,7 @@ public class Information
 			        }
 			        
 			        if(uri != null){
-			        	StorageInterface str = PluginController.getInstance().getStorageForSchema(uri);
+			        	StorageInterface str = PluginController.getInstance().getStoragePluginFor(uri);
 			            if(str != null){
 			            	Iterable<StorageInputStream> stream = str.at(uri);
 			            	for( StorageInputStream r : stream){
@@ -196,12 +196,12 @@ public class Information
 			extraFields.put(key, null);
 		}
 		/*
-		HashMap<Integer, TagValue> mf = TagsStruct.getInstance().getManualFields();
+		HashMap<Integer, TagValue> mf = TagsStruct.getSettings().getManualFields();
 		for (Integer i : mf.keySet())
 		{
 			extraFields.put(mf.get(i).getAlias(), null);
 		}
-		HashMap<Integer, TagValue> df = TagsStruct.getInstance().getDimFields();
+		HashMap<Integer, TagValue> df = TagsStruct.getSettings().getDimFields();
 		for (Integer i : df.keySet())
 		{
 			extraFields.put(df.get(i).getAlias(), null);
