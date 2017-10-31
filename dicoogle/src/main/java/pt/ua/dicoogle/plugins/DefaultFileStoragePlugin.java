@@ -36,19 +36,20 @@ import org.dcm4che2.io.DicomInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.ua.dicoogle.sdk.PluginBase;
+import pt.ua.dicoogle.sdk.PluginSet;
 import pt.ua.dicoogle.sdk.StorageInputStream;
 import pt.ua.dicoogle.sdk.StorageInterface;
+import pt.ua.dicoogle.sdk.settings.ConfigurationHolder;
 
-public class DefaultFileStoragePlugin extends PluginBase implements StorageInterface{
+public class DefaultFileStoragePlugin implements PluginSet, StorageInterface {
 
 	private static final Logger logger = LoggerFactory.getLogger(DefaultFileStoragePlugin.class);
 	
 	private String defaultScheme = "file";
-	
+	private ConfigurationHolder settings;
+
 	public DefaultFileStoragePlugin() {
 		super();
-		super.storagePlugins.add(this);
 	}
 
 	@Override
@@ -134,6 +135,16 @@ public class DefaultFileStoragePlugin extends PluginBase implements StorageInter
 		return "default-filesystem-plugin";
 	}
 
+	@Override
+	public void setSettings(ConfigurationHolder xmlSettings) {
+		this.settings = xmlSettings;
+	}
+
+	@Override
+	public ConfigurationHolder getSettings() {
+		return this.settings;
+	}
+
 	private class MyIterable implements Iterable<StorageInputStream>{
 
 		private URI baseLocation;
@@ -145,7 +156,6 @@ public class DefaultFileStoragePlugin extends PluginBase implements StorageInter
 
 		@Override
 		public Iterator<StorageInputStream> iterator() {
-			// TODO Auto-generated method stub
 			return createIterator(baseLocation);
 		}
 		
@@ -170,15 +180,13 @@ public class DefaultFileStoragePlugin extends PluginBase implements StorageInter
 			if(!it.hasNext())
 				return null;
 			File f = it.next();
-			logger.debug("Added File: "+f.toURI());
+			logger.debug("Added File: {}", f.toURI());
 			MyDICOMInputString stream = new MyDICOMInputString(f);			
 			return stream;
 		}
 
 		@Override
 		public void remove() {
-			// TODO Auto-generated method stub
-			
 		}
 	}
 	
@@ -198,13 +206,11 @@ public class DefaultFileStoragePlugin extends PluginBase implements StorageInter
 
 		@Override
 		public InputStream getInputStream() throws IOException {
-			// TODO Auto-generated method stub
 			return new BufferedInputStream(new FileInputStream(file));
 		}
 
 		@Override
 		public long getSize() throws IOException {
-			// TODO Auto-generated method stub
 			return file.length();
 		}
 		

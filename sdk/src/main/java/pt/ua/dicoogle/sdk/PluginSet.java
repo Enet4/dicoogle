@@ -19,11 +19,13 @@
 package pt.ua.dicoogle.sdk;
 
 import java.util.Collection;
+import java.util.Collections;
 
 import net.xeoh.plugins.base.Plugin;
 
 import org.restlet.resource.ServerResource;
 
+import pt.ua.dicoogle.sdk.annotation.InjectPluginSet;
 import pt.ua.dicoogle.sdk.settings.ConfigurationHolder;
 
 /**
@@ -44,15 +46,9 @@ public interface PluginSet extends Plugin {
      * @return IndexPluginInterface returns a list of active index plugins
      * @see IndexerInterface
      */
-    public Collection<IndexerInterface> getIndexPlugins();
-
-    /**
-     * Gets the graphical plugins enclosed in this plugin set.
-     * This collection must be immutable.
-     * @return 
-     * @deprecated the Swing-based remote user interface is deprecated
-     */
-    public Collection<GraphicalInterface> getGraphicalPlugins();
+    public default Collection<IndexerInterface> getIndexPlugins() {
+        return Collections.emptySet();
+    }
 
     /**
      * Gets the query plugins enclosed in this plugin set.
@@ -60,14 +56,18 @@ public interface PluginSet extends Plugin {
      * @return a collection of query plugins
      * @see QueryInterface
      */
-    public Collection<QueryInterface> getQueryPlugins();
+    public default Collection<QueryInterface> getQueryPlugins() {
+        return Collections.emptySet();
+    }
     
     /**
      * Gets the storage plugins enclosed in this plugin set.
      * This collection must be immutable.
      * @return Collection holding the StoragePlugins of this PluginSet
      */
-    public Collection<StorageInterface> getStoragePlugins();
+    public default Collection<StorageInterface> getStoragePlugins() {
+        return Collections.emptySet();
+    }
     
     /**
      * Obtains a collection of access to the RESTful resources. These plugins will be installed to
@@ -76,7 +76,9 @@ public interface PluginSet extends Plugin {
      * @return a collection of Restlet-based server resources, implementing {@code toString()}
      * to provide the resource name
      */
-    public Collection<ServerResource> getRestPlugins();
+    public default Collection<ServerResource> getRestPlugins() {
+        return Collections.emptySet();
+    }
     
     /**
      * Obtains a collection of Jetty plugins, so as to implement web services via Dicoogle.
@@ -84,14 +86,23 @@ public interface PluginSet extends Plugin {
      * @return a collection of Jetty plugins to the core application
      * @see JettyPluginInterface
      */
-    public Collection<JettyPluginInterface> getJettyPlugins();
+    public default Collection<JettyPluginInterface> getJettyPlugins() {
+        return Collections.emptySet();
+    }
     
     /**
-     * Gets the plugin's name. This name will be used for identifying index/query/storage providers,
-     * and should be unique among the total plugin sets installed.
+     * Gets the plugin set's name. This name should be unique among the total plugin sets installed.
+     * When adding {@link InjectPluginSet} to the class, the default implementation will retrieve
+     * the name
      * @return the name of the plugin, never changes
      */
-    public String getName();
+    public default String getName() {
+        InjectPluginSet annotation = this.getClass().getAnnotation(InjectPluginSet.class);
+        if (annotation == null) {
+            return this.getClass().getName();
+        }
+        return annotation.value();
+    }
     
     /**
      * Defines the plugin's settings. This method will be called once after the plugin set was instantiated
@@ -112,6 +123,8 @@ public interface PluginSet extends Plugin {
      * Signals a plugin to stop. Upon an invocation of this method, the plugin may clean allocated resources
      * and save state if required.
      */
-    public void shutdown();
+    public default void onShutdown() {
+        // no-op
+    }
     
 }

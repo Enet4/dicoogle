@@ -197,13 +197,13 @@ public interface DicooglePlatformInterface {
 
     /** Easily performs an indexation procedure over all active indexers. This operation is synchronous
      * and will wait until all providers have finished indexing.
-     * 
+     *
      * @param path the path to index
      * @return a list of reports, one for each provider
      */
     @Deprecated
 	public List<Report> indexBlocking(URI path);
-    
+
     /** Obtain access to the server's settings.
      * @return an object for read-only access to the settings
      */

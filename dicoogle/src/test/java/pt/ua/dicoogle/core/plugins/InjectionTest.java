@@ -18,19 +18,69 @@
  */
 package pt.ua.dicoogle.core.plugins;
 
-import org.junit.Before;
 import org.junit.Test;
-
+import pt.ua.dicoogle.plugins.PluginPreparer;
+import pt.ua.dicoogle.sdk.DicooglePlugin;
+import pt.ua.dicoogle.sdk.annotation.InjectPlatformInterface;
+import pt.ua.dicoogle.sdk.core.DicooglePlatformInterface;
+import pt.ua.dicoogle.sdk.settings.ConfigurationHolder;
 import java.io.IOException;
+
+import static org.junit.Assert.*;
 
 public class InjectionTest {
 
-    @Before
-    public void init() {
+    public static class MyPlugin implements DicooglePlugin {
+
+        @InjectPlatformInterface
+        private DicooglePlatformInterface platform;
+
+        @Override
+        public String getName() {
+            return "MyPlugin";
+        }
+
+        @Override
+        public boolean enable() {
+            return true;
+        }
+
+        @Override
+        public boolean disable() {
+            return false;
+        }
+
+        @Override
+        public boolean isEnabled() {
+            return true;
+        }
+
+        @Override
+        public void setSettings(ConfigurationHolder settings) {
+        }
+
+        @Override
+        public ConfigurationHolder getSettings() {
+            return null;
+        }
+
+        public Object getPlatform() {
+            return platform;
+        }
     }
+
+    private final static DicooglePlatformInterface myproxy = new PlatformInterfaceMock();
 
     @Test
     public void test() throws IOException {
+        MyPlugin myplugin = new MyPlugin();
 
+        assertNull(myplugin.getPlatform());
+
+        PluginPreparer prepare = new PluginPreparer(this.myproxy);
+
+        prepare.setup(myplugin);
+
+        assertEquals(this.myproxy, myplugin.getPlatform());
     }
 }

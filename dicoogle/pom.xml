@@ -212,8 +212,9 @@
             <plugin>
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>
+                <version>1.6</version>
                 <executions>
-                    <!-- Install Node and NPM -->
+                    <!-- Install Node and npm -->
                     <execution>
                         <id>install node and npm</id>
                         <goals>
@@ -304,13 +305,11 @@
             <artifactId>dcm4che-imageio</artifactId>
             <version>${dcm4che.version}</version>
         </dependency>
-
         <dependency>
             <groupId>org.dicoogle.aclmanager</groupId>
             <artifactId>aclmanager</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
-
         <dependency>
             <groupId>pt.ua.ieeta</groupId>
             <artifactId>dicoogle-sdk</artifactId>
@@ -322,6 +321,14 @@
             <artifactId>dicoogle-sdk-ext</artifactId>
             <version>${project.version}</version>
         </dependency>
+<<<<<<< Updated upstream
+=======
+        <dependency>
+            <groupId>org.java.net.substance</groupId>
+            <artifactId>substance</artifactId>
+            <version>5.3</version>
+        </dependency>
+>>>>>>> Stashed changes
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-server</artifactId>
@@ -337,12 +344,6 @@
             <artifactId>jetty-servlets</artifactId>
             <version>${jetty.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-jsp</artifactId>
-            <version>${jetty.version}</version>
-        </dependency>
-
         <dependency>
             <groupId>org.restlet.jee</groupId>
             <artifactId>org.restlet.ext.servlet</artifactId>

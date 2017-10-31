@@ -200,16 +200,12 @@ public class PluginController{
                     continue;
                 }
                 for (Object o : interfaces) {
-                    if (o instanceof PlatformCommunicatorInterface) {
-                        ((PlatformCommunicatorInterface)o).setPlatformProxy(proxy);
-                    }
+                    this.preparer.injectPlatform(o);
                 }
             }
 
             // and to the set itself
-            if (set instanceof PlatformCommunicatorInterface) {
-                ((PlatformCommunicatorInterface) set).setPlatformProxy(proxy);
-            }
+            this.preparer.setup(set);
 
             // register storage plugins in dictionary
             for (StorageInterface store: set.getStoragePlugins()) {
@@ -288,8 +284,9 @@ public class PluginController{
             }
 	*/
             //lets the plugin know we are shutting down
-            plugin.shutdown();
+            plugin.onShutdown();
         }
+
     }
 
     /**
