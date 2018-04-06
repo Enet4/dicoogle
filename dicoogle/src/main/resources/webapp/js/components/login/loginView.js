@@ -1,23 +1,19 @@
 import React from 'react';
-import {UserActions} from "../../actions/userActions";
-import {UserStore} from "../../stores/userStore";
-import $ from 'jquery';
+import * as UserActions from "../../actions/userActions";
+import UserStore from "../../stores/userStore";
 
 const LoginView = React.createClass({
   contextTypes: {
     router: React.PropTypes.object.isRequired
   },
   getInitialState: function() {
-    return {data: {},
-    status: "loading",
-    failed: false};
-  },
-  componentDidMount: function(){
-    //LoggerActions.get();
-    this.enableEnterKey();
-  },
-  componentDidUpdate: function(){
-    this.enableEnterKey();
+    return {
+      data: {},
+      status: "loading",
+      failed: false,
+      username: '',
+      password: ''
+    };
   },
   componentWillMount: function() {
     UserStore.listen(this._onChange);
@@ -26,7 +22,7 @@ const LoginView = React.createClass({
   _onChange: function(data){
     console.log(data);
     const {router} = this.context;
-    if(data.failed === true)
+    if(data.loginFailed)
     {
       this.setState({failed: true});
       return;
@@ -34,22 +30,16 @@ const LoginView = React.createClass({
 
     if(data.isLoggedIn && this.isMounted())
     {
-      router.replace('/search');
-      //React.unmountComponentAtNode(document.getElementById('login_container'));
+      router.replace('search');
     }
-  },
-  enableEnterKey() {
-    var self = this;
-    var fh = function(e) {
-      if (e.keyCode === 13) {
-        self.onLoginClick();
-      }
-    };
-    $("#username").keypress(fh);
-    $("#password").keypress(fh);
   },
 
   render: function() {
+    const guestCredentials = process.env.GUEST_USERNAME && ([<hr key='0'/>, <div key='1'>
+      Guest credentials: <br/>
+      <b>username:</b> {process.env.GUEST_USERNAME} <br/>
+      <b>password:</b> {process.env.GUEST_PASSWORD}
+    </div>])
     return (
       <div id="loginwrapper" style={{position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10000}}>
         <div className="loginbody">
@@ -71,10 +61,13 @@ const LoginView = React.createClass({
               <form className="form-horizontal">
 
                 <p className="loginTextA">Sign In</p>
-                <input ref="user" type="text" id="username" name="username" placeholder="Username" className="loginInputUsername form-control"/>
-                <input ref="pass" type="password" id="password" name="password" placeholder="Password" className="loginInputPassword form-control" />
-                  {this.state.failed ? (<p style={{color: 'red'}}> Login Failed. Please try again. </p>) : ''}
+                <input ref="user" type="text" id="username" name="username" placeholder="Username" className="loginInputUsername form-control"
+                       value={this.state.username} onChange={this.handleUsernameChange} onKeyDown={this.handleKeyDown} />
+                <input ref="pass" type="password" id="password" name="password" placeholder="Password" className="loginInputPassword form-control"
+                       value={this.state.password} onChange={this.handlePasswordChange} onKeyDown={this.handleKeyDown} />
+                {this.state.failed && (<p style={{color: 'red'}}> Login Failed. Please try again. </p>)}
                 <button type="button" className="btn submit btn_dicoogle" onClick={this.onLoginClick}>Login</button>
+                {guestCredentials}
               </form>
 
             </div>
@@ -101,13 +94,24 @@ const LoginView = React.createClass({
     );
   },
 
-  onLoginClick: function(){
-    const user = document.getElementById("username").value;
-    const pass = document.getElementById("password").value;
-    //console.log("login clicked", user ,pass );
-    UserActions.login(user, pass);
-  }
+  handleKeyDown(e) {
+    if (e.keyCode === 13) {
+      this.onLoginClick();
+    }
+  },
+ 
+  handleUsernameChange(e) {
+    this.setState({username: e.target.value});
+  },
+ 
+  handlePasswordChange(e) {
+    this.setState({password: e.target.value});
+  },
 
+  onLoginClick() {
+    const {username, password} = this.state;
+    UserActions.login(username, password);
+  }
 });
 
 
