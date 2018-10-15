@@ -12,11 +12,11 @@ cache:
 matrix:
   include:
     - jdk: oraclejdk8
-      env: NODE_VERSION=6
+      env: NODE_VERSION=6 WEBAPP_ONLY=1
     - jdk: oraclejdk8
       env: NODE_VERSION=lts/*
     - jdk: oraclejdk8
-      env: NODE_VERSION=stable
+      env: NODE_VERSION=stable WEBAPP_ONLY=1
     - jdk: openjdk8
       env: NODE_VERSION=lts/*
     - jdk: oraclejdk9
@@ -54,4 +54,7 @@ before_install:
 install: true
 
 script:
-  - cd dicoogle/src/main/resources/webapp && npm install && cd ../../../../.. && mvn install -Dskip.installnodenpm -Dskip.npm -Dmaven.javadoc.skip=true -B -V
+  - cd dicoogle/src/main/resources/webapp && npm install 
+  - if [ -z "$WEBAPP_ONLY" ]; then
+      cd ../../../../.. && mvn install -Dskip.installnodenpm -Dskip.npm -Dmaven.javadoc.skip=true -B -V
+    fi
