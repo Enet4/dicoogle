@@ -21,8 +21,11 @@ matrix:
       env: NODE_VERSION=lts/*
     - jdk: oraclejdk9
       env: NODE_VERSION=lts/*
+    - jdk: oraclejdk10
+      env: NODE_VERSION=lts/*
   allow_failures:
     - jdk: oraclejdk9
+    - jdk: oraclejdk10
 
 addons:
   apt:
