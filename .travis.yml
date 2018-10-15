@@ -36,8 +36,11 @@ addons:
       - g++-4.8
 
 before_install:
-  - wget https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.der;
-    sudo keytool -importcert -trustcacerts -alias lets-encrypt-x3-cross-signed -file lets-encrypt-x3-cross-signed.der -storepass changeit -keystore $JAVA_HOME/jre/lib/security/cacerts
+  - echo "JDK version = $TRAVIS_JDK_VERSION"
+  - if [ $TRAVIS_JDK_VERSION == "oraclejdk8" ] || [ $TRAVIS_JDK_VERSION == "openjdk8" ]; then
+      wget https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.der;
+      sudo keytool -importcert -trustcacerts -alias lets-encrypt-x3-cross-signed -file lets-encrypt-x3-cross-signed.der -storepass changeit -keystore $JAVA_HOME/jre/lib/security/cacerts;
+    fi
   - nvm install $NODE_VERSION
   - if [ $TRAVIS_OS_NAME == "linux" ]; then
       export CC="gcc-4.8";
