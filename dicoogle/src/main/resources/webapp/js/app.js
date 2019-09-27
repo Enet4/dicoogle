@@ -1,11 +1,11 @@
 import $ from "jquery";
-import React, { PropTypes } from "react";
+import React from "react";
 import ReactDOM from "react-dom";
 import Sidebar from "./components/sidebar";
 import { Endpoints } from "./constants/endpoints";
 import dicoogleClient from "dicoogle-client";
 import Webcore from "dicoogle-webcore";
-
+import PropTypes from "prop-types";
 import { Router, Route, IndexRoute } from "react-router";
 
 import { Search } from "./components/search/searchView";
@@ -32,7 +32,7 @@ class App extends React.Component {
   static get contextTypes() {
     return {
       router: PropTypes.object.isRequired,
-      location: React.PropTypes.object
+      location: PropTypes.object
     };
   }
 

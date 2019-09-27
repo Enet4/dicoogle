@@ -14,15 +14,20 @@ const PluginsView = React.createClass({
   },
 
   componentWillMount() {
+    console.debug("[PluginsView] componentWillMount");
     this.unsubscribe = PluginStore.listen(this._onPluginsChange);
   },
 
-  componentDidMount: function() {
+  componentDidMount() {
+    console.debug("[PluginsView] componentDidMount");
     const pluginTypes = ["query", "index", "storage", "servlet"];
-    pluginTypes.map(type => PluginActions.get(type));
+    pluginTypes.map(type => {
+      console.debug("[PluginsView] retrieved plugin data: ", type);
+      return PluginActions.get(type);
+    });
   },
 
-  componentWillUnmount: function() {
+  componentWillUnmount() {
     this.unsubscribe();
   },
 
